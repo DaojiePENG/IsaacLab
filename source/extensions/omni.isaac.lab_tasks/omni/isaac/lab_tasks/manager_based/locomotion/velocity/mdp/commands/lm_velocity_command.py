@@ -1,7 +1,6 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2024, @Daojie PENG: Daojie.PENG@qq.com.
 # All rights reserved.
 #
-# SPDX-License-Identifier: BSD-3-Clause
 
 """Sub-module containing command generators for the velocity-based locomotion task."""
 
@@ -19,15 +18,14 @@ from omni.isaac.lab.markers import VisualizationMarkers
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv
 
-    from .commands_cfg import NormalVelocityCommandCfg, UniformVelocityCommandCfg
+    from .lm_commands_cfg import LMVelocityCommandCfg # pdj: configuration class for language-motion velocity commands 
 
 # pdj: import language related packages
 from transformers import AutoTokenizer, AutoModel 
 # from transformers import DPRContextEncoder, DPRContextEncoderTokenizer
 
 
-
-class UniformVelocityCommand(CommandTerm):
+class LMVelocityCommand(CommandTerm):
     r"""Command generator that generates a velocity command in SE(2) from uniform distribution.
 
     The command comprises of a linear velocity in x and y direction and an angular velocity around
@@ -45,10 +43,10 @@ class UniformVelocityCommand(CommandTerm):
 
     """
 
-    cfg: UniformVelocityCommandCfg
+    cfg: LMVelocityCommandCfg
     """The configuration of the command generator."""
 
-    def __init__(self, cfg: UniformVelocityCommandCfg, env: ManagerBasedEnv):
+    def __init__(self, cfg: LMVelocityCommandCfg, env: ManagerBasedEnv):
         """Initialize the command generator.
 
         Args:
@@ -65,6 +63,20 @@ class UniformVelocityCommand(CommandTerm):
         # crete buffers to store the command
         # -- command: x vel, y vel, yaw vel, heading
         self.vel_command_b = torch.zeros(self.num_envs, 3, device=self.device)
+
+        # pdj: using dragon-multiturn context encoder to encode the velocity commands
+        # self.tokenizer = DPRContextEncoderTokenizer.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
+        # self.context_encoder = DPRContextEncoder.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
+        self.tokenizer = AutoTokenizer.from_pretrained('nvidia/dragon-multiturn-query-encoder')
+        self.context_encoder = AutoModel.from_pretrained('nvidia/dragon-multiturn-context-encoder')
+        self.init_express = "I am running at longitudinal speed: {} m/s, lateral speed: {} m/s, spinning speed: {} m/s.".format(0.0, 0.0, 0.0)
+        self.init_tokens = self.tokenizer(self.init_express, padding=True, truncation=True, max_length=512, return_tensors='pt')
+        self.init_context = self.context_encoder(**self.init_tokens).pooler_output # (1, emb_dim=768)
+        # I want to embed all 3 vel into one embedding, so the shape should be [num_envs, 768] instead of the orignal [num_envs, 3];
+        self.language_vel_command = torch.zeros(self.num_envs, self.init_context.shape[1], device=self.device) # define a tensor, data type is str, shape is [num_envs, 768]
+        self.language_vel_command[:] = self.init_context
+        # pdj: using dragon-multiturn context encoder to encode the velocity commands
+
         self.heading_target = torch.zeros(self.num_envs, device=self.device)
         self.is_heading_env = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.is_standing_env = torch.zeros_like(self.is_heading_env)
@@ -74,7 +86,7 @@ class UniformVelocityCommand(CommandTerm):
 
     def __str__(self) -> str:
         """Return a string representation of the command generator."""
-        msg = "UniformVelocityCommand:\n"
+        msg = "LMVelocityCommandCfg:\n"
         msg += f"\tCommand dimension: {tuple(self.command.shape[1:])}\n"
         msg += f"\tResampling time range: {self.cfg.resampling_time_range}\n"
         msg += f"\tHeading command: {self.cfg.heading_command}\n"
@@ -89,8 +101,10 @@ class UniformVelocityCommand(CommandTerm):
 
     @property
     def command(self) -> torch.Tensor:
-        """The desired base velocity command in the base frame. Shape is (num_envs, 3)."""
-        return self.vel_command_b
+        """The desired base velocity command in the base frame. Shape is (num_envs, 3 + 768)."""
+        # return self.vel_command_b
+        return torch.cat([self.vel_command_b, self.language_vel_command], dim=1)
+    
 
     """
     Implementation specific functions.
@@ -117,6 +131,21 @@ class UniformVelocityCommand(CommandTerm):
         self.vel_command_b[env_ids, 1] = r.uniform_(*self.cfg.ranges.lin_vel_y)
         # -- ang vel yaw - rotation around z
         self.vel_command_b[env_ids, 2] = r.uniform_(*self.cfg.ranges.ang_vel_z)
+
+        # pdj： prepare the language_vel_command. how to encode and update string in tensors?
+        for env_id in env_ids:
+            '''pdj: use the updated vel_command_b to generate the language_vel_command'''
+            # 1. prepare the expression string
+            self.env_id_express = "I am running at longitudinal speed: {} m/s, lateral speed: {} m/s, spinning speed: {} m/s.".format(self.vel_command_b[env_ids, 0], self.vel_command_b[env_ids, 1], self.vel_command_b[env_ids, 2])
+            # # 2. tokenize the string and update the tokens tensor
+            self.env_id_tokens = self.tokenizer(self.env_id_express, padding=True, truncation=True, max_length=512, return_tensors='pt')
+            # # 3. pooling the expression tokens
+            self.env_id_context = self.context_encoder(**self.env_id_tokens).pooler_output # (1, emb_dim=768)
+            # # 4. update language commands tokens
+            self.language_vel_command[env_id] = self.env_id_context
+        
+        # self.language_vel_command[env_ids, :] = self.language_vel_command[env_ids, :]
+
         # heading target
         if self.cfg.heading_command:
             self.heading_target[env_ids] = r.uniform_(*self.cfg.ranges.heading)
@@ -201,75 +230,4 @@ class UniformVelocityCommand(CommandTerm):
         arrow_quat = math_utils.quat_mul(base_quat_w, arrow_quat)
 
         return arrow_scale, arrow_quat
-
-
-class NormalVelocityCommand(UniformVelocityCommand):
-    """Command generator that generates a velocity command in SE(2) from a normal distribution.
-
-    The command comprises of a linear velocity in x and y direction and an angular velocity around
-    the z-axis. It is given in the robot's base frame.
-
-    The command is sampled from a normal distribution with mean and standard deviation specified in
-    the configuration. With equal probability, the sign of the individual components is flipped.
-    """
-
-    cfg: NormalVelocityCommandCfg
-    """The command generator configuration."""
-
-    def __init__(self, cfg: NormalVelocityCommandCfg, env: ManagerBasedEnv):
-        """Initializes the command generator.
-
-        Args:
-            cfg: The command generator configuration.
-            env: The environment.
-        """
-        super().__init__(cfg, env)
-        # create buffers for zero commands envs
-        self.is_zero_vel_x_env = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
-        self.is_zero_vel_y_env = torch.zeros_like(self.is_zero_vel_x_env)
-        self.is_zero_vel_yaw_env = torch.zeros_like(self.is_zero_vel_x_env)
-
-    def __str__(self) -> str:
-        """Return a string representation of the command generator."""
-        msg = "NormalVelocityCommand:\n"
-        msg += f"\tCommand dimension: {tuple(self.command.shape[1:])}\n"
-        msg += f"\tResampling time range: {self.cfg.resampling_time_range}\n"
-        msg += f"\tStanding probability: {self.cfg.rel_standing_envs}"
-        return msg
-
-    def _resample_command(self, env_ids):
-        # sample velocity commands
-        r = torch.empty(len(env_ids), device=self.device)
-        # -- linear velocity - x direction
-        self.vel_command_b[env_ids, 0] = r.normal_(mean=self.cfg.ranges.mean_vel[0], std=self.cfg.ranges.std_vel[0])
-        self.vel_command_b[env_ids, 0] *= torch.where(r.uniform_(0.0, 1.0) <= 0.5, 1.0, -1.0)
-        # -- linear velocity - y direction
-        self.vel_command_b[env_ids, 1] = r.normal_(mean=self.cfg.ranges.mean_vel[1], std=self.cfg.ranges.std_vel[1])
-        self.vel_command_b[env_ids, 1] *= torch.where(r.uniform_(0.0, 1.0) <= 0.5, 1.0, -1.0)
-        # -- angular velocity - yaw direction
-        self.vel_command_b[env_ids, 2] = r.normal_(mean=self.cfg.ranges.mean_vel[2], std=self.cfg.ranges.std_vel[2])
-        self.vel_command_b[env_ids, 2] *= torch.where(r.uniform_(0.0, 1.0) <= 0.5, 1.0, -1.0)
-
-        # update element wise zero velocity command
-        # TODO what is zero prob ?
-        self.is_zero_vel_x_env[env_ids] = r.uniform_(0.0, 1.0) <= self.cfg.ranges.zero_prob[0]
-        self.is_zero_vel_y_env[env_ids] = r.uniform_(0.0, 1.0) <= self.cfg.ranges.zero_prob[1]
-        self.is_zero_vel_yaw_env[env_ids] = r.uniform_(0.0, 1.0) <= self.cfg.ranges.zero_prob[2]
-
-        # update standing envs
-        self.is_standing_env[env_ids] = r.uniform_(0.0, 1.0) <= self.cfg.rel_standing_envs
-
-    def _update_command(self):
-        """Sets velocity command to zero for standing envs."""
-        # Enforce standing (i.e., zero velocity command) for standing envs
-        standing_env_ids = self.is_standing_env.nonzero(as_tuple=False).flatten()  # TODO check if conversion is needed
-        self.vel_command_b[standing_env_ids, :] = 0.0
-
-        # Enforce zero velocity for individual elements
-        # TODO: check if conversion is needed
-        zero_vel_x_env_ids = self.is_zero_vel_x_env.nonzero(as_tuple=False).flatten()
-        zero_vel_y_env_ids = self.is_zero_vel_y_env.nonzero(as_tuple=False).flatten()
-        zero_vel_yaw_env_ids = self.is_zero_vel_yaw_env.nonzero(as_tuple=False).flatten()
-        self.vel_command_b[zero_vel_x_env_ids, 0] = 0.0
-        self.vel_command_b[zero_vel_y_env_ids, 1] = 0.0
-        self.vel_command_b[zero_vel_yaw_env_ids, 2] = 0.0
+  
