@@ -22,7 +22,7 @@ import carb
 import omni.client
 
 # NUCLEUS_ASSET_ROOT_DIR = carb.settings.get_settings().get("/persistent/isaac/asset_root/cloud")
-NUCLEUS_ASSET_ROOT_DIR = "/home/daojie/Downloads/NVIDIA/Assets/Isaac/4.2"
+NUCLEUS_ASSET_ROOT_DIR = os.environ.get('NUCLEUS_ASSET_ROOT_DIR') # pdj: use export NUCLEUS_ASSET_ROOT_DIR='xxx' to config the path locally
 """Path to the root directory on the Nucleus Server."""
 
 NVIDIA_NUCLEUS_DIR = f"{NUCLEUS_ASSET_ROOT_DIR}/NVIDIA"
