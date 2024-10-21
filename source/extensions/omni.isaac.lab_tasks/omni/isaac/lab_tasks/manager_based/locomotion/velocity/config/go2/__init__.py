@@ -59,6 +59,25 @@ gym.register(
 
 
 # pdj: register the language-motion tasks 
+gym.register(
+    id="Isaac-LM-Tokens-Velocity-Flat-Unitree-Go2-v0",
+    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": lm_flat_env_cfg.UnitreeGo2FlatEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.lm_rsl_rl_ppo_cfg:UnitreeGo2FlatPPORunnerCfgTokens",
+    },
+)
+
+gym.register(
+    id="Isaac-LM-Tokens-Velocity-Flat-Unitree-Go2-Play-v0",
+    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": lm_flat_env_cfg.UnitreeGo2FlatEnvCfg_PLAY,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.lm_rsl_rl_ppo_cfg:UnitreeGo2FlatPPORunnerCfgTokens",
+    },
+)
 
 gym.register(
     id="Isaac-LM-Velocity-Flat-Unitree-Go2-v0",

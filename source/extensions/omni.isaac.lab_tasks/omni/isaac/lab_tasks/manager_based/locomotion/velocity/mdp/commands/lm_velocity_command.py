@@ -69,11 +69,11 @@ class LMVelocityCommand(CommandTerm):
         self.context_encoder = AutoModel.from_pretrained('nvidia/dragon-multiturn-context-encoder', low_cpu_mem_usage=True)
         self.env_id_tokens = torch.zeros(1, cfg.encodings.tokens_max_length, device=self.device)
         self.env_id_tokens = self.tokenizer("I am running at longitudinal speed: {} m/s, lateral speed: {} m/s, spinning speed: {} m/s.".format(0.0, 0.0, 0.0), padding=cfg.encodings.tokens_padding, truncation=cfg.encodings.tokens_truncation, max_length=cfg.encodings.tokens_max_length, return_tensors='pt')
-        self.env_id_context = torch.zeros(1, 768, device=self.device)
-        self.env_id_context = self.context_encoder(**self.env_id_tokens).pooler_output # (1, emb_dim=768)
+        # self.env_id_context = torch.zeros(1, 768, device=self.device)
+        # self.env_id_context = self.context_encoder(**self.env_id_tokens).pooler_output # (1, emb_dim=768)
         # I want to embed all 3 vel into one embedding, so the shape should be [num_envs, 768] instead of the orignal [num_envs, 3];
-        self.language_vel_command = torch.zeros(self.num_envs, self.env_id_context.shape[1], device=self.device) # define a tensor, data type is str, shape is [num_envs, 768]
-        self.language_vel_command[:] = self.env_id_context
+        self.language_vel_command = torch.zeros(self.num_envs, cfg.encodings.tokens_max_length, device=self.device) # define a tensor, data type is str, shape is [num_envs, 768]
+        self.language_vel_command[:] = self.env_id_tokens['input_ids']
         # pdj: using dragon-multiturn context encoder to encode the velocity commands
 
         self.heading_target = torch.zeros(self.num_envs, device=self.device)
@@ -138,9 +138,9 @@ class LMVelocityCommand(CommandTerm):
             # 2. tokenize the string and update the tokens tensor
             self.env_id_tokens = self.tokenizer("I am running at longitudinal speed: {} m/s, lateral speed: {} m/s, spinning speed: {} m/s.".format(self.vel_command_b[env_ids, 0], self.vel_command_b[env_ids, 1], self.vel_command_b[env_ids, 2]), padding=self.cfg.encodings.tokens_padding, truncation=self.cfg.encodings.tokens_truncation, max_length=self.cfg.encodings.tokens_max_length, return_tensors='pt')
             # 3. pooling the expression tokens
-            self.env_id_context = self.context_encoder(**self.env_id_tokens).pooler_output # (1, emb_dim=768)
+            # self.env_id_context = self.context_encoder(**self.env_id_tokens).pooler_output # (1, emb_dim=768)
             # 4. update language commands tokens
-            self.language_vel_command[env_id] = self.env_id_context
+            self.language_vel_command[env_id] = self.env_id_tokens['input_ids']
         
 
         # heading target

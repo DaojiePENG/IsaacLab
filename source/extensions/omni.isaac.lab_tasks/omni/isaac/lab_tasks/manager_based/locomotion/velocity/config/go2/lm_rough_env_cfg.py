@@ -37,7 +37,8 @@ class UnitreeGo2RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # 03. observation
 
         # 04. event
-        self.events.push_robot.interval_range_s = (10.0, 20.0) # pdj: if None, it does't appear at the console though it was well defined.
+        # self.events.push_robot.interval_range_s = (10.0, 20.0) # pdj: if None, it does't appear at the console though it was well defined.
+        self.events.push_robot = None
         self.events.add_base_mass.params["mass_distribution_params"] = (-1.0, 3.0)
         self.events.add_base_mass.params["asset_cfg"].body_names = "base"
         self.events.base_external_force_torque.params["asset_cfg"].body_names = "base"
