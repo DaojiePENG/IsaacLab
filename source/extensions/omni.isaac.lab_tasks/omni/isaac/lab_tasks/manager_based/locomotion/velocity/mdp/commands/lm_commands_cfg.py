@@ -50,6 +50,17 @@ class LMVelocityCommandCfg(CommandTermCfg):
     ranges: Ranges = MISSING
     """Distribution ranges for the velocity commands."""
 
+    @configclass
+    class Encodings:
+        """Language encoding parameters for the language velocity commands."""
+
+        tokens_max_length: int = MISSING  # min max [m/s]
+        tokens_padding: bool | str = MISSING
+        tokens_truncation: bool = MISSING
+
+    encodings: Encodings = MISSING
+    """Language encoding parameters for the language velocity commands."""
+
     goal_vel_visualizer_cfg: VisualizationMarkersCfg = GREEN_ARROW_X_MARKER_CFG.replace(
         prim_path="/Visuals/Command/velocity_goal"
     )
