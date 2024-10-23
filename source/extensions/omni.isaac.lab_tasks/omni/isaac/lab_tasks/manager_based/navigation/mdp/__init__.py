@@ -9,3 +9,5 @@ from omni.isaac.lab.envs.mdp import *  # noqa: F401, F403
 
 from .pre_trained_policy_action import *  # noqa: F401, F403
 from .rewards import *  # noqa: F401, F403
+from .lm_rewards import *  # pdj: import language-motion based rewards
+from .commands import * # pdj: import language-motion based commands
