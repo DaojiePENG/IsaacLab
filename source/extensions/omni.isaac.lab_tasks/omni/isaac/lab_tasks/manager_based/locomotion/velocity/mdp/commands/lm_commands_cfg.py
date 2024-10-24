@@ -57,6 +57,7 @@ class LMVelocityCommandCfg(CommandTermCfg):
         tokens_max_length: int = MISSING  # min max [m/s]
         tokens_padding: bool | str = MISSING
         tokens_truncation: bool = MISSING
+        token_norm_n: int = MISSING
 
     encodings: Encodings = MISSING
     """Language encoding parameters for the language velocity commands."""

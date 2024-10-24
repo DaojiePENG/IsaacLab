@@ -73,7 +73,7 @@ class LMVelocityCommand(CommandTerm):
         # self.env_id_context = self.context_encoder(**self.env_id_tokens).pooler_output # (1, emb_dim=768)
         # I want to embed all 3 vel into one embedding, so the shape should be [num_envs, 768] instead of the orignal [num_envs, 3];
         self.language_vel_command = torch.zeros(self.num_envs, cfg.encodings.tokens_max_length, device=self.device) # define a tensor, data type is str, shape is [num_envs, 768]
-        self.language_vel_command[:] = self.env_id_tokens['input_ids']
+        self.language_vel_command[:] = (self.env_id_tokens['input_ids'] - torch.ones_like(self.env_id_tokens['input_ids'])*2**(cfg.encodings.token_norm_n - 1))/2**cfg.encodings.token_norm_n
         # pdj: using dragon-multiturn context encoder to encode the velocity commands
 
         self.heading_target = torch.zeros(self.num_envs, device=self.device)
@@ -125,11 +125,11 @@ class LMVelocityCommand(CommandTerm):
         # sample velocity commands
         r = torch.empty(len(env_ids), device=self.device)
         # -- linear velocity - x direction
-        self.vel_command_b[env_ids, 0] = r.uniform_(*self.cfg.ranges.lin_vel_x)
+        self.vel_command_b[env_ids, 0] = torch.round(r.uniform_(*self.cfg.ranges.lin_vel_x), decimals=4)
         # -- linear velocity - y direction
-        self.vel_command_b[env_ids, 1] = r.uniform_(*self.cfg.ranges.lin_vel_y)
+        self.vel_command_b[env_ids, 1] = torch.round(r.uniform_(*self.cfg.ranges.lin_vel_y), decimals=4)
         # -- ang vel yaw - rotation around z
-        self.vel_command_b[env_ids, 2] = r.uniform_(*self.cfg.ranges.ang_vel_z)
+        self.vel_command_b[env_ids, 2] = torch.round(r.uniform_(*self.cfg.ranges.ang_vel_z), decimals=4)
 
         # pdj： prepare the language_vel_command. how to encode and update string in tensors?
         for env_id in env_ids:
@@ -140,7 +140,7 @@ class LMVelocityCommand(CommandTerm):
             # 3. pooling the expression tokens
             # self.env_id_context = self.context_encoder(**self.env_id_tokens).pooler_output # (1, emb_dim=768)
             # 4. update language commands tokens
-            self.language_vel_command[env_id] = self.env_id_tokens['input_ids']
+            self.language_vel_command[env_id] = (self.env_id_tokens['input_ids'] - torch.ones_like(self.env_id_tokens['input_ids'])*2**(self.cfg.encodings.token_norm_n - 1))/2**self.cfg.encodings.token_norm_n
         
 
         # heading target

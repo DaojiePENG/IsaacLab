@@ -114,7 +114,11 @@ class CommandsCfg:
         ranges=mdp.LMVelocityCommandCfg.Ranges(
             lin_vel_x=(-1.0, 1.0), lin_vel_y=(-1.0, 1.0), ang_vel_z=(-1.0, 1.0), heading=(-math.pi, math.pi)
         ),
-        encodings=mdp.LMVelocityCommandCfg.Encodings(tokens_max_length=64, tokens_padding='max_length', tokens_truncation=True),
+        encodings=mdp.LMVelocityCommandCfg.Encodings(
+            tokens_max_length=40, 
+            tokens_padding='max_length', 
+            tokens_truncation=True,
+            token_norm_n=12),
     )
 
 
