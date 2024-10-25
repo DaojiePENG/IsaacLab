@@ -64,17 +64,24 @@ class LMVelocityCommand(CommandTerm):
         self.vel_command_b = torch.zeros(self.num_envs, 3, device=self.device)
 
         # pdj: using dragon-multiturn context encoder to encode the velocity commands
-        # , device_map=self.device; , device_map='cuda:0'
-        self.tokenizer = AutoTokenizer.from_pretrained('nvidia/dragon-multiturn-query-encoder', low_cpu_mem_usage=True)
-        self.context_encoder = AutoModel.from_pretrained('nvidia/dragon-multiturn-context-encoder', low_cpu_mem_usage=True)
-        self.env_id_tokens = torch.zeros(1, cfg.encodings.tokens_max_length, device=self.device)
-        self.env_id_tokens = self.tokenizer("I am running at longitudinal speed: {} m/s, lateral speed: {} m/s, spinning speed: {} m/s.".format(0.0, 0.0, 0.0), padding=cfg.encodings.tokens_padding, truncation=cfg.encodings.tokens_truncation, max_length=cfg.encodings.tokens_max_length, return_tensors='pt')
-        self.env_id_context = torch.zeros(1, 768, device=self.device)
-        self.env_id_context = self.context_encoder(**self.env_id_tokens).pooler_output # (1, emb_dim=768)
+        # 1. load language model. device_map=self.device; , device_map='cuda:0'
+        self.tokenizer = AutoTokenizer.from_pretrained('nvidia/dragon-multiturn-query-encoder', device_map=self.device)
+        self.context_encoder = AutoModel.from_pretrained('nvidia/dragon-multiturn-context-encoder', device_map=self.device)
+        # 2. tokenize the expression string
+        self.env_id_tokens = self.tokenizer(
+            "I am running at longitudinal speed: {} m/s, lateral speed: {} m/s, spinning speed: {} m/s.".format(0.0, 0.0, 0.0), 
+            padding=cfg.encodings.tokens_padding, 
+            truncation=cfg.encodings.tokens_truncation, 
+            max_length=cfg.encodings.tokens_max_length, 
+            return_tensors='pt').to(self.device)
+        # 3. encode the language tokens
+        self.env_id_context = self.context_encoder(self.env_id_tokens['input_ids']).pooler_output # (1, emb_dim=768)
+        # 4. init language_vel_command and apply the pooler to it
         # I want to embed all 3 vel into one embedding, so the shape should be [num_envs, 768] instead of the orignal [num_envs, 3];
         self.language_vel_command = torch.zeros(self.num_envs, self.env_id_context.shape[1], device=self.device) # define a tensor, data type is str, shape is [num_envs, 768]
         self.language_vel_command[:] = self.env_id_context
         # pdj: using dragon-multiturn context encoder to encode the velocity commands
+
 
         self.heading_target = torch.zeros(self.num_envs, device=self.device)
         self.is_heading_env = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
@@ -131,17 +138,20 @@ class LMVelocityCommand(CommandTerm):
         # -- ang vel yaw - rotation around z
         self.vel_command_b[env_ids, 2] = r.uniform_(*self.cfg.ranges.ang_vel_z)
 
-        # pdj： prepare the language_vel_command. how to encode and update string in tensors?
-        for env_id in env_ids:
-            '''pdj: use the updated vel_command_b to generate the language_vel_command'''
-            # 1. prepare the expression string
-            # 2. tokenize the string and update the tokens tensor
-            self.env_id_tokens = self.tokenizer("I am running at longitudinal speed: {} m/s, lateral speed: {} m/s, spinning speed: {} m/s.".format(self.vel_command_b[env_ids, 0], self.vel_command_b[env_ids, 1], self.vel_command_b[env_ids, 2]), padding=self.cfg.encodings.tokens_padding, truncation=self.cfg.encodings.tokens_truncation, max_length=self.cfg.encodings.tokens_max_length, return_tensors='pt')
-            # 3. pooling the expression tokens
-            self.env_id_context = self.context_encoder(**self.env_id_tokens).pooler_output # (1, emb_dim=768)
-            # 4. update language commands tokens
-            self.language_vel_command[env_id] = self.env_id_context
-        
+        # pdj: prepare the language_vel_command. directly apply language_vel_command;
+        # 1. tokenize all with self.vel_command_b[0, x], because all the envs are using the same vel_command_b
+        self.env_id_tokens = self.tokenizer(
+                "I am running at longitudinal speed: {} m/s, lateral speed: {} m/s, spinning speed: {} m/s.".format(self.vel_command_b[0, 0], self.vel_command_b[0, 1], self.vel_command_b[0, 2]), 
+                padding=self.cfg.encodings.tokens_padding, 
+                truncation=self.cfg.encodings.tokens_truncation, 
+                max_length=self.cfg.encodings.tokens_max_length, 
+                return_tensors='pt').to(self.device)
+        # 2. pooling the expression tokens
+        self.env_id_context = self.context_encoder(self.env_id_tokens['input_ids']).pooler_output # (1, emb_dim=768)
+        # 3. update language commands tokens
+        self.language_vel_command[env_ids] = self.env_id_context
+        # pdj: prepare the language_vel_command. directly apply language_vel_command.
+
 
         # heading target
         if self.cfg.heading_command:
@@ -172,6 +182,22 @@ class LMVelocityCommand(CommandTerm):
         # TODO: check if conversion is needed
         standing_env_ids = self.is_standing_env.nonzero(as_tuple=False).flatten()
         self.vel_command_b[standing_env_ids, :] = 0.0
+
+        # pdj: prepare the language_vel_command. directly apply language_vel_command;
+        # 1. tokenize all with self.vel_command_b[0, x], because all the envs are using the same vel_command_b
+        self.env_id_tokens = self.tokenizer(
+                "I am running at longitudinal speed: {} m/s, lateral speed: {} m/s, spinning speed: {} m/s.".format(self.vel_command_b[0, 0], self.vel_command_b[0, 1], self.vel_command_b[0, 2]), 
+                padding=self.cfg.encodings.tokens_padding, 
+                truncation=self.cfg.encodings.tokens_truncation, 
+                max_length=self.cfg.encodings.tokens_max_length, 
+                return_tensors='pt').to(self.device)
+        # 2. pooling the expression tokens
+        self.env_id_context = self.context_encoder(self.env_id_tokens['input_ids']).pooler_output # (1, emb_dim=768)
+        # 3. update language commands tokens
+        self.language_vel_command[standing_env_ids] = self.env_id_context
+        # pdj: prepare the language_vel_command. directly apply language_vel_command.
+
+
 
     def _set_debug_vis_impl(self, debug_vis: bool):
         # set visibility of markers
