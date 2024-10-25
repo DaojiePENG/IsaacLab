@@ -21,11 +21,6 @@ if TYPE_CHECKING:
 
     from .commands_cfg import NormalVelocityCommandCfg, UniformVelocityCommandCfg
 
-# pdj: import language related packages
-from transformers import AutoTokenizer, AutoModel 
-# from transformers import DPRContextEncoder, DPRContextEncoderTokenizer
-
-
 
 class UniformVelocityCommand(CommandTerm):
     r"""Command generator that generates a velocity command in SE(2) from uniform distribution.

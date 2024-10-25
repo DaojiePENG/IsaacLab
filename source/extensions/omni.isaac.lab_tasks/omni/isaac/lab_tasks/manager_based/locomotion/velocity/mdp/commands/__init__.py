@@ -5,8 +5,8 @@
 
 """Various command terms that can be used in the environment."""
 
-from .lm_commands_cfg import (
-    LMVelocityCommandCfg, # pdj: configuration class for language-motion velocity commands 
+from .vlnm_commands_cfg import (
+    VLNMVelocityCommandCfg, # pdj: configuration class for language-motion velocity commands 
 )
 
-from .lm_velocity_command import LMVelocityCommand # pdj: preparation class for language-motion velocity commands
+from .vlnm_velocity_command import VLNMVelocityCommand # pdj: preparation class for language-motion velocity commands

@@ -11,15 +11,15 @@ from omni.isaac.lab.markers import VisualizationMarkersCfg
 from omni.isaac.lab.markers.config import BLUE_ARROW_X_MARKER_CFG, FRAME_MARKER_CFG, GREEN_ARROW_X_MARKER_CFG
 from omni.isaac.lab.utils import configclass
 
-from .lm_velocity_command import LMVelocityCommand # pdj: preparation class for language-motion velocity commands
+from .vlnm_velocity_command import VLNMVelocityCommand, VLNMVelocityCommand
 
 
 
 @configclass
-class LMVelocityCommandCfg(CommandTermCfg):
+class VLNMVelocityCommandCfg(CommandTermCfg):
     """Configuration for the uniform velocity command generator."""
 
-    class_type: type = LMVelocityCommand
+    class_type: type = VLNMVelocityCommand
 
     asset_name: str = MISSING
     """Name of the asset in the environment for which the commands are generated."""

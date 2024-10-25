@@ -17,12 +17,12 @@ class UnitreeGo2RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 1500
     save_interval = 50
-    experiment_name = "unitree_go2_rough_lm"
+    experiment_name = "unitree_go2_rough_vlnm"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
-        actor_hidden_dims=[512, 512, 128],
-        critic_hidden_dims=[512, 512, 128],
+        actor_hidden_dims=[512, 256, 128],
+        critic_hidden_dims=[512, 256, 128],
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
@@ -47,7 +47,6 @@ class UnitreeGo2FlatPPORunnerCfg(UnitreeGo2RoughPPORunnerCfg):
         super().__post_init__()
 
         self.max_iterations = 10000
-        # self.log_interval = 10 # pdj: adding log period. unimplemented presently; unable to develop cause rsl_rl was not installed with source code.
-        self.experiment_name = "unitree_go2_flat_lm"
-        self.policy.actor_hidden_dims = [512, 256, 128]
-        self.policy.critic_hidden_dims = [512, 256, 128]
+        self.experiment_name = "unitree_go2_flat_vlnm"
+        self.policy.actor_hidden_dims = [128, 128, 128]
+        self.policy.critic_hidden_dims = [128, 128, 128]

@@ -18,6 +18,11 @@ if TYPE_CHECKING:
 """
 Commands.
 """
-def lm_generated_commands(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
-    '''The generated command from language command term in the command manager with the given name.'''
+
+def vlnm_generated_commands_d(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    '''The generated digital command from language command term in the command manager with the given name.'''
+    return env.command_manager.get_command(command_name)[:, :3] # pdj: only input encoded language commands [num_envs, 768]
+
+def vlnm_generated_commands_l(env: ManagerBasedRLEnv, command_name: str) -> torch.Tensor:
+    '''The generated language command from language command term in the command manager with the given name.'''
     return env.command_manager.get_command(command_name)[:, 3:] # pdj: only input encoded language commands [num_envs, 768]

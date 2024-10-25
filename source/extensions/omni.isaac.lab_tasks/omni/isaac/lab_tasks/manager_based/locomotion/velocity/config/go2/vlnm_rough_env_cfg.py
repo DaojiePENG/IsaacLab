@@ -5,7 +5,7 @@
 
 from omni.isaac.lab.utils import configclass
 
-from omni.isaac.lab_tasks.manager_based.locomotion.velocity.lm_velocity_env_cfg import LocomotionVelocityRoughEnvCfg
+from omni.isaac.lab_tasks.manager_based.locomotion.velocity.vlnm_velocity_env_cfg import LocomotionVelocityRoughEnvCfg
 
 ##
 # Pre-defined configs
@@ -26,18 +26,11 @@ class UnitreeGo2RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.scene.terrain.terrain_generator.sub_terrains["random_rough"].noise_range = (0.01, 0.06)
         self.scene.terrain.terrain_generator.sub_terrains["random_rough"].noise_step = 0.01
 
-        # 01. command: 
-        # pdj: new defined commands should be explicitly used so that the inherited class won't overlook it. 
-        self.commands.base_language_velocity.debug_vis = False
-
-        # 02. action:
         # reduce action scale
         self.actions.joint_pos.scale = 0.25
 
-        # 03. observation
-
-        # 04. event
-        self.events.push_robot.interval_range_s = (10.0, 20.0) # pdj: if None, it does't appear at the console though it was well defined.
+        # event
+        self.events.push_robot = None
         self.events.add_base_mass.params["mass_distribution_params"] = (-1.0, 3.0)
         self.events.add_base_mass.params["asset_cfg"].body_names = "base"
         self.events.base_external_force_torque.params["asset_cfg"].body_names = "base"
@@ -54,21 +47,17 @@ class UnitreeGo2RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             },
         }
 
-        # 05. termination
+        # rewards
+        self.rewards.feet_air_time.params["sensor_cfg"].body_names = ".*_foot"
+        self.rewards.feet_air_time.weight = 0.01
+        self.rewards.undesired_contacts = None
+        self.rewards.dof_torques_l2.weight = -0.0002
+        self.rewards.track_lin_vel_xy_exp.weight = 1.5
+        self.rewards.track_ang_vel_z_exp.weight = 0.75
+        self.rewards.dof_acc_l2.weight = -2.5e-7
+
+        # terminations
         self.terminations.base_contact.params["sensor_cfg"].body_names = "base"
-
-        # 06. rewards
-        self.rewards.lm_feet_air_time.params["sensor_cfg"].body_names = ".*_foot"
-        self.rewards.lm_feet_air_time.weight = 0.01
-        self.rewards.lm_undesired_contacts = None
-        self.rewards.lm_joint_torques_l2.weight = -0.0002
-        self.rewards.lm_track_lin_vel_xy_exp.weight = 1.5
-        self.rewards.lm_track_ang_vel_z_exp.weight = 0.75
-        self.rewards.lm_joint_acc_l2.weight = -2.5e-7
-
-        # 07. cirriculum
-
-        
 
 
 @configclass
