@@ -64,7 +64,7 @@ class KeyboardControl():
     Follow this description to define and use keyboard envents of omniverse:
     https://docs.omniverse.nvidia.com/dev-guide/latest/programmer_ref/input-devices/keyboard.html#handle-keyboard-events
     '''
-    def __init__(self, commands: torch.tensor):
+    def __init__(self, commands: torch.tensor, device: str):
         # subscribe to keyboard events
         app_window = omni.appwindow.get_default_app_window()
         self.keyboard = app_window.get_keyboard()
@@ -72,11 +72,42 @@ class KeyboardControl():
         self.keyboard_sub_id = input.subscribe_to_keyboard_events(self.keyboard, self.on_keyboard_input)
         # initialize commands
         self.commands = commands
+        self.device = device
+        self._input_keyboard_mapping = {
+            # forward command
+            "NUMPAD_8": [1.0, 0.0, 0.0],
+            "UP": [1.0, 0.0, 0.0],
+            # back command
+            "NUMPAD_2": [-1.0, 0.0, 0.0],
+            "DOWN": [-1.0, 0.0, 0.0],
+            # left command
+            "NUMPAD_6": [0.0, -0.5, 0.0],
+            "RIGHT": [0.0, -0.5, 0.0],
+            # right command
+            "NUMPAD_4": [0.0, 0.5, 0.0],
+            "LEFT": [0.0, 0.5, 0.0],
+            # yaw command (positive)
+            "NUMPAD_7": [0.0, 0.0, 2.0],
+            "N": [0.0, 0.0, 2.0],
+            # yaw command (negative)
+            "NUMPAD_9": [0.0, 0.0, -2.0],
+            "M": [0.0, 0.0, -2.0],
+        }
     def __del__(self, name):
         # unsubscribe the keyboard event handler
         self.keyboard_sub_id = None
 
     def on_keyboard_input(self, e):
+        # '''when a key is pressedor released  the command is adjusted w.r.t the key-mapping for position control'''
+        # if e.type == KeyboardEventType.KEY_PRESS or e.type == KeyboardEventType.KEY_REPEAT:
+        #     # on pressing, the command is incremented
+        #     if e.input.name in self._input_keyboard_mapping:
+        #         self.commands[:, :3] += torch.tensor(self._input_keyboard_mapping[e.input.name], device=self.device)
+        # elif e.type == carb.input.KeyboardEventType.KEY_RELEASE:
+        #     # on release, the command is decremented
+        #     if e.input.name in self._input_keyboard_mapping:
+        #         self.commands[:, :3] -= torch.tensor(self._input_keyboard_mapping[e.input.name], device=self.device)
+        
         # v_x: longitudinal forward and backward
         if e.input == carb.input.KeyboardInput.UP:
             if e.type == KeyboardEventType.KEY_PRESS or e.type == KeyboardEventType.KEY_REPEAT:
@@ -196,7 +227,7 @@ def main():
     obs, _ = env.get_observations()
     timestep = 0
     # instanciate keyboard control
-    keyboard_control: KeyboardControl = KeyboardControl(torch.zeros_like(obs[:, 9:12]))
+    keyboard_control: KeyboardControl = KeyboardControl(torch.zeros_like(obs[:, 9:12]), env.unwrapped.device)
     # simulate environment
     while simulation_app.is_running():
         # run everything in inference mode
