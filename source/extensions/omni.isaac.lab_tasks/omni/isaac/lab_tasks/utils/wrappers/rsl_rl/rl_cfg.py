@@ -28,6 +28,42 @@ class RslRlPpoActorCriticCfg:
     activation: str = MISSING
     """The activation function for the actor and critic networks."""
 
+@configclass
+# define a new class taking the RslRlPpoActorCriticCfg class as parent
+class RslRlPpoActorCriticCfgTv0(RslRlPpoActorCriticCfg):
+    """Configuration for the PPO actor-critic transformer networks."""
+
+
+    d_actor: int = MISSING
+    """The dimension of the actor transformer network."""
+
+    nhead_actor: int = MISSING
+    """The number of heads for the actor transformer network."""
+
+    num_layers_actor: int = MISSING
+    """The number of layers for the actor transformer network."""
+
+    dim_feedforward_actor: int = MISSING
+    """The feedforward dimension for the actor transformer network."""
+
+    dropout_actor: float = MISSING
+    """The dropout rate for the actor transformer network."""
+
+    d_critic: int = MISSING
+    """The dimension of the critic transformer network."""
+
+    nhead_critic: int = MISSING
+    """The number of heads for the critic transformer network."""
+
+    num_layers_critic: int = MISSING
+    """The number of layers for the critic transformer network."""
+
+    dim_feedforward_critic: int = MISSING
+    """The feedforward dimension for the critic transformer network."""
+
+    dropout_critic: float = MISSING
+    """The dropout rate for the critic transformer network."""
+
 
 @configclass
 class RslRlPpoAlgorithmCfg:

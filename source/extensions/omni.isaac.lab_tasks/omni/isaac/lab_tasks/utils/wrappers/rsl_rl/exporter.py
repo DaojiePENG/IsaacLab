@@ -137,15 +137,31 @@ class _OnnxPolicyExporter(torch.nn.Module):
                 dynamic_axes={},
             )
         else:
-            obs = torch.zeros(1, self.actor[0].in_features)
-            torch.onnx.export(
-                self,
-                obs,
-                os.path.join(path, filename),
-                export_params=True,
-                opset_version=11,
-                verbose=self.verbose,
-                input_names=["obs"],
-                output_names=["actions"],
-                dynamic_axes={},
-            )
+            if self.actor.__class__.__name__ == "ActorTransformer":
+                # ActorTransformer can not get the number of input features as MLP does.
+                # So, we use the number of actor observations to initialize the input tensor.
+                obs = torch.zeros(1, self.actor.num_actor_obs)
+                torch.onnx.export(
+                    self,
+                    obs,
+                    os.path.join(path, filename),
+                    export_params=True,
+                    opset_version=14,
+                    verbose=self.verbose,
+                    input_names=["obs"],
+                    output_names=["actions"],
+                    dynamic_axes={},
+                )
+            else:
+                obs = torch.zeros(1, self.actor[0].in_features)
+                torch.onnx.export(
+                    self,
+                    obs,
+                    os.path.join(path, filename),
+                    export_params=True,
+                    opset_version=11,
+                    verbose=self.verbose,
+                    input_names=["obs"],
+                    output_names=["actions"],
+                    dynamic_axes={},
+                )
